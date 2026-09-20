@@ -1,0 +1,11 @@
+[
+  {"opp_id":"OPP-711","stage_name":"SS50","complete_pct":85,"missing_fields":["mutual_action_plan"],"passed":false},
+  {"opp_id":"OPP-712","stage_name":"SS20","complete_pct":62,"missing_fields":["business_problem","close_date"],"passed":false},
+  {"opp_id":"OPP-241","stage_name":"SS20","complete_pct":70,"missing_fields":[],"passed":true},
+  {"opp_id":"OPP-242","stage_name":"SS20","complete_pct":40,"missing_fields":["business_problem","next_step"],"passed":false},
+  {"opp_id":"OPP-318","stage_name":"SS60","complete_pct":96,"missing_fields":[],"passed":true},
+  {"opp_id":"OPP-402","stage_name":"SS20","complete_pct":28,"missing_fields":["business_problem","next_step","close_date"],"passed":false},
+  {"opp_id":"OPP-570","stage_name":"SS40","complete_pct":88,"missing_fields":[],"passed":true},
+  {"opp_id":"OPP-611","stage_name":"SS40","complete_pct":72,"missing_fields":["economic_buyer","decision_criteria"],"passed":false},
+  {"opp_id":"OPP-788","stage_name":"SS20","complete_pct":55,"missing_fields":["business_problem"],"passed":false}
+]

@@ -1,0 +1,6 @@
+[
+  {"stage_name":"SS20","required_fields":["business_problem","next_step","close_date"],"minimum_complete_pct":70},
+  {"stage_name":"SS40","required_fields":["champion","economic_buyer","decision_criteria","next_step"],"minimum_complete_pct":85},
+  {"stage_name":"SS50","required_fields":["proposal_sent","commercial_owner","mutual_action_plan"],"minimum_complete_pct":90},
+  {"stage_name":"SS60","required_fields":["legal_status","security_status","signature_date"],"minimum_complete_pct":95}
+]

@@ -1,0 +1,3 @@
+[
+  {"segment":"all","period":"quarter","meetings_min":10,"new_opportunities_min":3,"pipeline_created_min":1200000,"stage_advances_min":3,"forecast_submission_required":true}
+]
