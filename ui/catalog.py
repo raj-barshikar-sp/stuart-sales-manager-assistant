@@ -145,7 +145,7 @@ TASK_MENU: tuple[dict, ...] = (
         "label": "Manager policy & knowledge",
         "items": (
             {
-                "id": "manager_policy_faq",
+                "id": "knowledge_base",
                 "label": "Ask policy & product FAQ",
                 "agent": "knowledge_base_rag",
                 "default_prompt": (

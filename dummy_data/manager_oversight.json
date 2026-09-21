@@ -1,6 +1,0 @@
-[
-  {"opp_id":"OPP-711","rep_id":"REP-101","reason":"$2.4M commit lacks mutual action plan","severity":"high","manager_action":"Join commercial checkpoint"},
-  {"opp_id":"OPP-318","rep_id":"REP-103","reason":"Security review controls hard event date","severity":"high","manager_action":"Escalate security response owner"},
-  {"opp_id":"OPP-402","rep_id":"REP-101","reason":"Deal is stale and should remain omitted","severity":"medium","manager_action":"Approve close-out or restart plan"},
-  {"opp_id":"OPP-570","rep_id":"REP-104","reason":"$3.1M commit depends on privacy validation","severity":"high","manager_action":"Attend BAA decision call"}
-]

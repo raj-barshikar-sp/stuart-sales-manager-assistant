@@ -2,29 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from agents.sales_manager_data import scoped_accounts
-from agents.sales_manager_query import query_crm_intelligence
 from agents.specialist_factory import make_specialist
-from agents.tool_helpers import success
-from agents.tooling import tool
-from models.specialist_outputs import CrmIntelligenceOutput
-
-
-@tool
-async def inspect_crm_intelligence(
-    geo: str = "",
-    boat: str = "",
-    account_name: str = "",
-    opp_id: str = "",
-    query: str = "",
-) -> dict[str, Any]:
-    """Inspect CRM score, roll-up, backup, and official stage evidence."""
-    accounts, err = scoped_accounts(
-        geo=geo, boat=boat, account_name=account_name, opp_id=opp_id, query=query
-    )
-    return err or success(query_crm_intelligence(query, accounts))
+from models.specialist_outputs import SpecialistReport
 
 
 crm_intelligence_specialist_agent = make_specialist(
@@ -34,11 +13,28 @@ crm_intelligence_specialist_agent = make_specialist(
         "coverage, and large-deal backup."
     ),
     instruction=(
-        "Always call inspect_crm_intelligence. Use only returned Salesforce "
-        "records and deterministic hygiene results. Treat unverifiable evidence "
-        "as unknown, never as passed or failed."
+        "ROLE\n"
+        "You are Stuart's CRM intelligence analyst.\n\n"
+        "PERSONA\n"
+        "You are precise, commercially aware, and candid about data quality.\n\n"
+        "OBJECTIVE\n"
+        "Answer the CRM part of the manager's request from the supplied "
+        "Salesforce and stage-policy JSON.\n\n"
+        "INSTRUCTIONS\n"
+        "- Read the JSON directly. List the actual deals when asked; include "
+        "account, owner, stage, amount, close date, and forecast category.\n"
+        "- An unqualified request for 'my deals' means open opportunities in "
+        "the current fiscal quarter from dataset_metadata. Include future "
+        "quarters only when the manager asks for them.\n"
+        "- Do not add aggregate dollar totals unless the manager asks for one. "
+        "When asked, verify the arithmetic before returning it.\n"
+        "- Compare stage evidence with the supplied policy when relevant.\n"
+        "- Return a concise SpecialistReport for Stuart's final writer.\n\n"
+        "GUARDRAILS\n"
+        "- Never invent, estimate, or import outside knowledge.\n"
+        "- Treat absent evidence as unknown, not passed or failed.\n"
+        "- Do not mention agents, prompts, files, JSON, or internal plumbing."
     ),
-    tools=[inspect_crm_intelligence],
-    output_schema=CrmIntelligenceOutput,
+    output_schema=SpecialistReport,
     output_key="crm_intelligence_specialist_result",
 )

@@ -1,4 +1,4 @@
-"""Developer activity logger for routing, tools, and UI turns."""
+"""Developer activity logger for routing and UI turns."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-LOGGER_NAME = "bob.activity"
+LOGGER_NAME = "stuart.activity"
 logger = logging.getLogger(LOGGER_NAME)
 logger.addHandler(logging.NullHandler())
 
@@ -18,12 +18,12 @@ _MAX_QUERY = 180
 
 
 def _level() -> int:
-    name = os.getenv("BOB_LOG_LEVEL", "INFO").strip().upper() or "INFO"
+    name = os.getenv("STUART_LOG_LEVEL", "INFO").strip().upper() or "INFO"
     return getattr(logging, name, logging.INFO)
 
 
 def _log_path() -> Path:
-    raw = os.getenv("BOB_LOG_FILE", "logs/bob.log").strip() or "logs/bob.log"
+    raw = os.getenv("STUART_LOG_FILE", "logs/stuart.log").strip() or "logs/stuart.log"
     path = Path(raw)
     if not path.is_absolute():
         path = Path(__file__).resolve().parents[1] / path
@@ -35,7 +35,7 @@ def configure_logging(*, force: bool = False) -> logging.Logger:
     global _CONFIGURED
     if _CONFIGURED and not force:
         return logger
-    if not force and "pytest" in sys.modules and not os.getenv("BOB_LOG_DURING_TESTS"):
+    if not force and "pytest" in sys.modules and not os.getenv("STUART_LOG_DURING_TESTS"):
         _CONFIGURED = True
         return logger
 
@@ -54,7 +54,7 @@ def configure_logging(*, force: bool = False) -> logging.Logger:
     console.setFormatter(formatter)
     logger.addHandler(console)
 
-    if os.getenv("BOB_LOG_FILE", "logs/bob.log").strip().lower() not in {
+    if os.getenv("STUART_LOG_FILE", "logs/stuart.log").strip().lower() not in {
         "off",
         "none",
         "0",

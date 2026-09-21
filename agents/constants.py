@@ -1,33 +1,24 @@
-"""Shared constants for Seller Co-Pilot agents."""
+"""Shared constants for Stuart's agents."""
 
 import os
 
 from google.genai import types
 
-GEMINI_MODEL = os.getenv("SELLER_COPILOT_MODEL", "gemini-3.6-flash")
+GEMINI_MODEL = os.getenv("STUART_MODEL", "gemini-3.6-flash")
 SYNTHESIS_MODEL = os.getenv(
-    "SELLER_COPILOT_SYNTHESIS_MODEL", "gemini-3.6-flash"
-)
-TOOL_LATENCY_SECONDS = float(
-    os.getenv("SELLER_COPILOT_MOCK_LATENCY_SECONDS", "0")
+    "STUART_SYNTHESIS_MODEL", "gemini-3.6-flash"
 )
 CHILD_TIMEOUT_SECONDS = float(
-    os.getenv("SELLER_COPILOT_CHILD_TIMEOUT_SECONDS", "90")
+    os.getenv("STUART_CHILD_TIMEOUT_SECONDS", "90")
 )
 
-GREETING_REPLY = (
-    "Hey — I'm Stuart from Project Gru. I can review forecast risk, inspect the "
-    "call, coach the team, model future pipeline, or answer sales FAQs. "
-    "What do you need?"
-)
-THANKS_REPLY = "Anytime. What should Stuart work on next?"
-ACK_REPLY = "Glad that helped. What should Stuart work on next?"
-OFF_TOPIC_REPLY = (
-    "I focus on Sales Manager work — forecast inspection, deal and stage risk, "
-    "rep coaching, future pipeline, and sales FAQs. What do you need?"
+# Stuart writes his own conversational replies. This is only used when the
+# planner call itself fails, so the manager never sees an empty turn.
+FALLBACK_REPLY = (
+    "I lost that one on my side — say it again and I'll pick it up."
 )
 
-# Flash + tools: keep thinking cheap so function calls stay well-formed.
+# Specialists read supplied snapshots; low temperature keeps facts stable.
 SAFE_GEN_CONFIG = types.GenerateContentConfig(
     temperature=0.2,
     thinking_config=types.ThinkingConfig(thinking_level="MINIMAL"),
@@ -35,5 +26,11 @@ SAFE_GEN_CONFIG = types.GenerateContentConfig(
 
 SYNTHESIS_GEN_CONFIG = types.GenerateContentConfig(
     temperature=0.4,
+    thinking_config=types.ThinkingConfig(thinking_level="LOW"),
+)
+
+# The planner both routes and speaks, so it needs room to vary its wording.
+PLANNER_GEN_CONFIG = types.GenerateContentConfig(
+    temperature=0.6,
     thinking_config=types.ThinkingConfig(thinking_level="LOW"),
 )

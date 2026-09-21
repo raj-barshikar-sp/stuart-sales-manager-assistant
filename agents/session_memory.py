@@ -5,25 +5,19 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from google.adk.agents.callback_context import CallbackContext
-from google.adk.tools.base_tool import BaseTool
-from google.adk.tools.tool_context import ToolContext
-
 from agents.new_data_store import (
     accounts,
     list_accounts,
     resolve_account,
     territories,
 )
-from agents.orchestrator.prompt import TASK_AGENT_IDS
-from agents.tooling import tool
 
 SESSION_KEYS = ("ae_name", "last_account", "last_territory", "last_opportunity")
 ACCOUNTS = accounts()
 TERRITORIES = territories()
 
 
-def seed_session_state(callback_context: CallbackContext) -> None:
+def seed_session_state(callback_context: Any) -> None:
     """Guarantee placeholder keys exist so instruction injection does not fail."""
     for key in SESSION_KEYS:
         if not callback_context.state.get(key):
@@ -93,7 +87,9 @@ def apply_working_context(
             if inferred:
                 state["last_territory"] = inferred
     if territory:
-        state["last_territory"] = territory.strip().lower()
+        geo = territory.strip().lower()
+        if geo in TERRITORIES:
+            state["last_territory"] = geo
     if ae_name:
         state["ae_name"] = ae_name
     if opportunity:
@@ -104,67 +100,3 @@ def apply_working_context(
         "last_territory": str(state.get("last_territory") or ""),
         "last_opportunity": str(state.get("last_opportunity") or ""),
     }
-
-
-@tool
-def remember_working_context(
-    account_name: str = "",
-    territory: str = "",
-    ae_name: str = "",
-    opportunity: str = "",
-    tool_context: ToolContext | None = None,
-) -> dict[str, str]:
-    """Remember the user, live account, territory, and opportunity for follow-ups.
-
-    Call this when the user names an account, a territory, an opportunity, or themselves.
-    Follow-ups like "what about data quality?" reuse last_account.
-
-    Args:
-        account_name: Account to remember, for example "7-Eleven".
-        territory: west, central, south, east, or all.
-        ae_name: User name if they introduce themselves.
-        opportunity: Opportunity name or id, for example "Project Phoenix" or OPP-712.
-    """
-    if tool_context is None:
-        return {
-            "ae_name": ae_name,
-            "last_account": account_name,
-            "last_territory": territory,
-            "last_opportunity": opportunity,
-        }
-    return apply_working_context(
-        tool_context.state,
-        account=account_name,
-        territory=territory,
-        ae_name=ae_name,
-        opportunity=opportunity,
-    )
-
-
-def remember_after_specialist(
-    tool: BaseTool,
-    args: dict[str, Any],
-    tool_context: ToolContext,
-    tool_response: dict[str, Any],
-) -> None:
-    """After a specialist runs, remember any account or territory in the request."""
-    if tool.name not in TASK_AGENT_IDS:
-        return None
-    blob = str(
-        args.get("request")
-        or args.get("account_name")
-        or args.get("query")
-        or ""
-    )
-    if isinstance(tool_response, dict):
-        blob = f"{blob} {tool_response.get('account') or ''}"
-    account = detect_account_in_text(blob)
-    territory = detect_territory_in_text(blob)
-    opportunity = str(args.get("opp_id") or args.get("query") or "")
-    apply_working_context(
-        tool_context.state,
-        account=account or "",
-        territory=territory or "",
-        opportunity=opportunity,
-    )
-    return None

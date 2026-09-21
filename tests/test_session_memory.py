@@ -10,8 +10,6 @@ from agents.session_memory import (
     apply_working_context,
     detect_account_in_text,
     detect_territory_in_text,
-    remember_after_specialist,
-    remember_working_context,
     seed_context_from_text,
     seed_session_state,
 )
@@ -40,17 +38,6 @@ def test_apply_working_context_sets_owner_and_territory() -> None:
     assert remembered["last_territory"] == "east"
 
 
-def test_remember_working_context_without_tool_context() -> None:
-    result = remember_working_context(
-        account_name="Zenith Health Systems",
-        territory="east",
-        ae_name="Marcus Brody",
-    )
-    assert result["last_account"] == "Zenith Health Systems"
-    assert result["last_territory"] == "east"
-    assert result["ae_name"] == "Marcus Brody"
-
-
 def test_seed_session_state_fills_empty_keys() -> None:
     ctx = SimpleNamespace(state={})
     seed_session_state(ctx)
@@ -75,26 +62,8 @@ def test_seed_context_from_text_runs_before_routing() -> None:
     assert remembered["last_territory"] == "east"
 
 
-def test_remember_after_specialist_reads_request() -> None:
-    state: dict[str, str] = {}
-    remember_after_specialist(
-        tool=SimpleNamespace(name="crm_intelligence_specialist"),
-        args={"request": "Prep a briefing for Meridian Bank."},
-        tool_context=SimpleNamespace(state=state),
-        tool_response={},
-    )
-    assert state["last_account"] == "Meridian Bank"
-    remember_after_specialist(
-        tool=SimpleNamespace(name="synthesis"),
-        args={"request": "Merge Zenith Health Systems"},
-        tool_context=SimpleNamespace(state=state),
-        tool_response={},
-    )
-    assert state["last_account"] == "Meridian Bank"
-
-
 def test_planner_instruction_documents_direct_specialist_contract() -> None:
     instruction = build_orchestrator_instruction()
-    assert "Choose every specialist" in instruction
-    assert "working context" in instruction
+    assert "working_context" in instruction
+    assert "crm_intelligence_specialist" in instruction
     assert root_agent.name == "central_orchestrator"

@@ -1,7 +1,0 @@
-[
-  {"quarter":"Q+1","geo":"central","pipeline":8200000,"weighted_forecast":3945000,"target":5000000,"coverage_ratio":1.64,"model":"stage_weighted_v1","assumptions":["SS20 20%","SS40 50%","SS50 70%","SS60 90%"],"risks":["Meridian privacy review","BrightLeaf competitive bake-off"],"gaps":["Weighted forecast is $1,055,000 below target"]},
-  {"quarter":"Q+1","geo":"south","pipeline":1250000,"weighted_forecast":1125000,"target":1500000,"coverage_ratio":0.83,"model":"stage_weighted_v1","assumptions":["SS60 90%"],"risks":["GlobalTech security review"],"gaps":["Pipeline coverage below 1.0x"]},
-  {"quarter":"Q+1","geo":"west","pipeline":180000,"weighted_forecast":36000,"target":900000,"coverage_ratio":0.2,"model":"stage_weighted_v1","assumptions":["SS20 20%"],"risks":["NovaPay inactivity"],"gaps":["Weighted forecast is $864,000 below target"]},
-  {"quarter":"Q+2","geo":"central","pipeline":2650000,"weighted_forecast":795000,"target":4200000,"coverage_ratio":0.63,"model":"stage_weighted_v1","assumptions":["Early pipeline 30%"],"risks":["Insufficient pipeline creation"],"gaps":["Pipeline coverage below 1.0x"]},
-  {"quarter":"Q+2","geo":"east","pipeline":275000,"weighted_forecast":55000,"target":1000000,"coverage_ratio":0.28,"model":"stage_weighted_v1","assumptions":["SS20 20%"],"risks":["Helix qualification incomplete"],"gaps":["Weighted forecast is $945,000 below target"]}
-]

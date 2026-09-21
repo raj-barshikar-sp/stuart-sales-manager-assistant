@@ -1,6 +1,0 @@
-[
-  {"opp_id":"OPP-402","days_in_stage":330,"days_since_activity":27,"threshold_days":45,"stagnated":true,"recommended_action":"Close out or requalify with new champion"},
-  {"opp_id":"OPP-242","days_in_stage":82,"days_since_activity":27,"threshold_days":45,"stagnated":true,"recommended_action":"Requalify telemetry use case"},
-  {"opp_id":"OPP-611","days_in_stage":51,"days_since_activity":21,"threshold_days":45,"stagnated":true,"recommended_action":"Confirm bake-off decision date"},
-  {"opp_id":"OPP-788","days_in_stage":34,"days_since_activity":13,"threshold_days":45,"stagnated":false,"recommended_action":"Complete qualification"}
-]

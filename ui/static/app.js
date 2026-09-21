@@ -199,6 +199,85 @@ canvas.addEventListener("click", async (event) => {
   }, 1200);
 });
 
+const INLINE_RE = /\*\*([^*]+)\*\*|`([^`]+)`/g;
+const HEADING_RE = /^(#{1,6})\s+(.+)$/;
+const BULLET_RE = /^\s*[-*]\s+(.+)$/;
+const STEP_RE = /^\s*(\d+)[.)]\s+(.+)$/;
+const RULE_RE = /^(-{3,}|\*{3,}|_{3,})$/;
+
+function inlineMarkdown(text) {
+  const frag = document.createDocumentFragment();
+  let cursor = 0;
+  for (const match of text.matchAll(INLINE_RE)) {
+    if (match.index > cursor) {
+      frag.append(document.createTextNode(text.slice(cursor, match.index)));
+    }
+    frag.append(match[1] ? el("strong", "", match[1]) : el("code", "", match[2]));
+    cursor = match.index + match[0].length;
+  }
+  if (cursor < text.length) frag.append(document.createTextNode(text.slice(cursor)));
+  return frag;
+}
+
+function line(tag, className, text) {
+  const node = el(tag, className);
+  node.append(inlineMarkdown(text));
+  return node;
+}
+
+function nested(raw) {
+  return raw.length - raw.trimStart().length >= 2 ? " draft-indent" : "";
+}
+
+function formatDraft(text) {
+  const frag = document.createDocumentFragment();
+  let fence = null;
+  const closeFence = () => {
+    frag.append(el("pre", "draft-code", fence.join("\n")));
+    fence = null;
+  };
+  for (const raw of text.split("\n")) {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith("```")) {
+      if (fence) closeFence();
+      else fence = [];
+      continue;
+    }
+    if (fence) {
+      fence.push(raw);
+      continue;
+    }
+    const heading = trimmed.match(HEADING_RE);
+    const bullet = raw.match(BULLET_RE);
+    const step = raw.match(STEP_RE);
+    if (!trimmed) {
+      frag.append(el("div", "draft-gap"));
+    } else if (heading) {
+      const tag = heading[1].length <= 2 ? "draft-head" : "draft-subhead";
+      frag.append(line("h4", tag, heading[2]));
+    } else if (RULE_RE.test(trimmed)) {
+      frag.append(el("hr", "draft-rule"));
+    } else if (bullet) {
+      frag.append(line("div", `draft-bullet${nested(raw)}`, bullet[1]));
+    } else if (step) {
+      const row = line("div", `draft-step${nested(raw)}`, step[2]);
+      row.dataset.marker = `${step[1]}.`;
+      frag.append(row);
+    } else {
+      frag.append(line("div", `draft-line${nested(raw)}`, trimmed));
+    }
+  }
+  if (fence) closeFence();
+  return frag;
+}
+
+function addReplyCopy(parent, text) {
+  if (!text) return;
+  const tools = el("div", "reply-tools");
+  addCopy(tools, text, "Copy response");
+  parent.append(tools);
+}
+
 function briefingText(payload) {
   const chunks = [];
   if (payload.summary) chunks.push("Summary", payload.summary);
@@ -229,41 +308,6 @@ function briefingText(payload) {
   return chunks.join("\n").trim();
 }
 
-function line(tag, className, text) {
-  const node = el(tag, className);
-  text.split("**").forEach((part, index) => {
-    if (!part) return;
-    node.append(index % 2 ? el("strong", "", part) : document.createTextNode(part));
-  });
-  return node;
-}
-
-function formatDraft(text) {
-  const frag = document.createDocumentFragment();
-  for (const raw of text.split("\n")) {
-    const trimmed = raw.trim();
-    if (!trimmed) {
-      frag.append(el("div", "draft-gap"));
-    } else if (trimmed.startsWith("## ")) {
-      frag.append(line("h4", "draft-head", trimmed.slice(3)));
-    } else if (trimmed.startsWith("- ")) {
-      frag.append(line("div", "draft-bullet", trimmed.slice(2)));
-    } else if (trimmed.startsWith("Paste:")) {
-      frag.append(line("div", "draft-paste", trimmed.slice(6).trim()));
-    } else {
-      frag.append(line("div", "draft-line", trimmed));
-    }
-  }
-  return frag;
-}
-
-function addReplyCopy(parent, text) {
-  if (!text) return;
-  const tools = el("div", "reply-tools");
-  addCopy(tools, text, "Copy response");
-  parent.append(tools);
-}
-
 function renderBriefing(payload) {
   const wrap = el("div", "briefing");
   const summary = el("article", "card");
@@ -275,7 +319,7 @@ function renderBriefing(payload) {
     const insights = el("article", "card");
     insights.append(el("h3", "", "Key insights"));
     const list = el("ul");
-    for (const item of payload.insights) list.append(el("li", "", item));
+    for (const item of payload.insights) list.append(line("li", "", item));
     insights.append(list);
     wrap.append(insights);
   }
@@ -285,7 +329,7 @@ function renderBriefing(payload) {
     actions.append(el("h3", "", "Recommended actions"));
     for (const action of payload.actions) {
       const row = el("div", "action");
-      row.append(el("p", "", action.action));
+      row.append(line("p", "", action.action));
       const genericOwner = /^(you|sales manager|manager)$/i.test((action.owner || "").trim());
       const bits = [
         action.owner && !genericOwner && `owner: ${action.owner}`,
@@ -716,7 +760,7 @@ async function readSse(response, onEvent, signal) {
   }
 }
 
-async function askBob({ text }) {
+async function askStuart({ text }) {
   abortController?.abort();
   const gen = ++requestGen;
   abortController = new AbortController();
@@ -1097,7 +1141,7 @@ function listenThenSend() {
     }
     callBusy = true;
     setCallStatus("Thinking…", heard);
-    const spoken = await askBob({ text: heard });
+    const spoken = await askStuart({ text: heard });
     if (!inCall) return;
     if (spoken) {
       setCallStatus("Speaking…", "");
@@ -1147,7 +1191,7 @@ form.addEventListener("submit", (event) => {
   if ((!text && !attachments.length) || send.disabled) return;
   prompt.value = "";
   resizePrompt();
-  askBob({ text: text || "Review the attached files." });
+  askStuart({ text: text || "Review the attached files." });
 });
 
 stop.addEventListener("click", () => {

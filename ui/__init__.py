@@ -1,1 +1,1 @@
-"""Sales Manager-facing Bob UI."""
+"""Stuart's Sales Manager UI."""

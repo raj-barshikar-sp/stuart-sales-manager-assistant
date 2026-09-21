@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 STATUS_BY_AUTHOR = {
-    "route_planner": "Figuring out what you need…",
-    "crm_intelligence_specialist": "Validating CRM and stage evidence…",
-    "activity_engagement_specialist": "Reviewing calls and engagement…",
-    "rep_performance_specialist": "Checking rep performance…",
-    "forecast_modeling_specialist": "Modelling forecast and pipeline…",
-    "knowledge_base_rag": "Checking approved policy and product documents…",
-    "policy_answer": "Writing the answer…",
-    "synthesis": "Writing your briefing…",
+    "route_planner": "Understanding your question…",
+    "crm_intelligence_specialist": "Reading your CRM snapshot…",
+    "activity_engagement_specialist": "Reading calls and engagement…",
+    "rep_performance_specialist": "Reading team performance…",
+    "forecast_modeling_specialist": "Reading forecast and pipeline…",
+    "knowledge_base_rag": "Reading approved guidance…",
+    "synthesis": "Putting that together…",
 }
 
 

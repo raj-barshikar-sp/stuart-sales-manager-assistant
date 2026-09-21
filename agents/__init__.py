@@ -1,1 +1,1 @@
-"""Seller Co-Pilot agents package."""
+"""Stuart's agent package."""

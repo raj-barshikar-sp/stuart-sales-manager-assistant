@@ -1,1 +1,1 @@
-"""Pydantic models shared across Seller Co-Pilot agents."""
+"""Pydantic models shared by Stuart's agents."""

@@ -821,15 +821,21 @@ html[data-theme="dark"] .theme-toggle .icon-moon {
 }
 
 .draft-head {
-  margin: 14px 0 4px;
-  font-size: 12px;
+  margin: 18px 0 6px;
+  font-size: 16px;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
+  color: var(--fg);
 }
 
-.draft-head:first-child {
+.draft-subhead {
+  margin: 14px 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.draft-head:first-child,
+.draft-subhead:first-child {
   margin-top: 0;
 }
 
@@ -846,10 +852,47 @@ html[data-theme="dark"] .theme-toggle .icon-moon {
   color: var(--muted);
 }
 
-.draft-paste {
-  padding-left: 16px;
+.draft-step {
+  position: relative;
+  padding-left: 24px;
+  margin: 4px 0;
+}
+
+.draft-step::before {
+  content: attr(data-marker);
+  position: absolute;
+  left: 0;
   color: var(--muted);
-  font-style: italic;
+  font-variant-numeric: tabular-nums;
+}
+
+.draft-indent {
+  margin-left: 18px;
+}
+
+.draft-rule {
+  margin: 14px 0;
+  border: 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.draft-code {
+  margin: 8px 0;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--light-gray) 70%, var(--white));
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  white-space: pre-wrap;
+  font-family: var(--font);
+  font-size: 13px;
+}
+
+.stream code {
+  padding: 1px 5px;
+  background: color-mix(in srgb, var(--light-gray) 60%, var(--white));
+  border-radius: 6px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 12.5px;
 }
 
 .draft-gap {
@@ -929,7 +972,6 @@ html[data-theme="dark"] .theme-toggle .icon-moon {
 .card {
   background: transparent;
   border: 0;
-  border-left: 0;
   border-radius: 0;
   padding: 0;
   box-shadow: none;

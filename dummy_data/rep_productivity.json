@@ -1,6 +1,0 @@
-[
-  {"rep_id":"REP-101","rep_name":"Avery Cole","geo":"central","period":"2026-Q3","meetings":14,"new_opportunities":4,"pipeline_created":2580000,"stage_advances":5,"forecast_submitted":true},
-  {"rep_id":"REP-102","rep_name":"Jordan Patel","geo":"central","period":"2026-Q3","meetings":8,"new_opportunities":2,"pipeline_created":1050000,"stage_advances":2,"forecast_submitted":true},
-  {"rep_id":"REP-103","rep_name":"Sam Rivera","geo":"south","period":"2026-Q3","meetings":12,"new_opportunities":3,"pipeline_created":1525000,"stage_advances":4,"forecast_submitted":true},
-  {"rep_id":"REP-104","rep_name":"Casey Nguyen","geo":"central","period":"2026-Q3","meetings":6,"new_opportunities":1,"pipeline_created":3100000,"stage_advances":1,"forecast_submitted":false}
-]

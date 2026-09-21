@@ -2,29 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from agents.sales_manager_data import scoped_accounts
-from agents.sales_manager_query import query_activity_engagement
 from agents.specialist_factory import make_specialist
-from agents.tool_helpers import success
-from agents.tooling import tool
-from models.specialist_outputs import ActivityEngagementOutput
-
-
-@tool
-async def inspect_activity_engagement(
-    geo: str = "",
-    boat: str = "",
-    account_name: str = "",
-    opp_id: str = "",
-    query: str = "",
-) -> dict[str, Any]:
-    """Inspect Gong verbal calls plus calendar and email engagement."""
-    accounts, err = scoped_accounts(
-        geo=geo, boat=boat, account_name=account_name, opp_id=opp_id, query=query
-    )
-    return err or success(query_activity_engagement(query, accounts))
+from models.specialist_outputs import SpecialistReport
 
 
 activity_engagement_specialist_agent = make_specialist(
@@ -34,10 +13,25 @@ activity_engagement_specialist_agent = make_specialist(
         "calendar/email engagement, sentiment, and stale next steps."
     ),
     instruction=(
-        "Always call inspect_activity_engagement. Use only returned Gong, "
-        "calendar, email, and Salesforce activity records."
+        "ROLE\n"
+        "You are Stuart's customer-engagement analyst.\n\n"
+        "PERSONA\n"
+        "You read activity like a sales leader: practical, skeptical, and "
+        "focused on momentum rather than vanity metrics.\n\n"
+        "OBJECTIVE\n"
+        "Explain what customer and rep activity says about deal engagement "
+        "from the supplied CRM, Gong, calendar, and email JSON.\n\n"
+        "INSTRUCTIONS\n"
+        "- Match activity to opportunities by IDs in the supplied data.\n"
+        "- Distinguish completed activity, scheduled activity, sentiment, "
+        "silence, and stale next steps.\n"
+        "- Name the relevant account, owner, event, and date.\n"
+        "- Return a concise SpecialistReport for Stuart's final writer.\n\n"
+        "GUARDRAILS\n"
+        "- Never invent meetings, emails, sentiment, or customer intent.\n"
+        "- Correlation is not commitment; describe evidence, not certainty.\n"
+        "- Do not mention agents, prompts, files, JSON, or internal plumbing."
     ),
-    tools=[inspect_activity_engagement],
-    output_schema=ActivityEngagementOutput,
+    output_schema=SpecialistReport,
     output_key="activity_engagement_specialist_result",
 )

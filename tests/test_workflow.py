@@ -1,4 +1,4 @@
-"""Code-enforced workflow executes Sales Manager specialists then synthesis."""
+"""Gemini orchestration with injected JSON context."""
 
 from __future__ import annotations
 
@@ -6,12 +6,10 @@ import asyncio
 from types import SimpleNamespace
 
 from google.adk.agents.invocation_context import InvocationContext
-from google.adk.events.event import Event
 from google.adk.sessions.session import Session
 from google.genai import types
 
-from agents.orchestrator.workflow import SellerCopilotWorkflow
-from models.synthesis_output import SynthesisOutput
+from agents.orchestrator.workflow import StuartWorkflow
 
 
 def _ctx(query: str) -> InvocationContext:
@@ -20,67 +18,31 @@ def _ctx(query: str) -> InvocationContext:
         invocation_id="inv",
         session=Session(id="s", app_name="agents", user_id="u", state={}),
         user_content=types.Content(
-            role="user", parts=[types.Part.from_text(text=query)]
+            role="user",
+            parts=[types.Part.from_text(text=query)],
         ),
     )
 
 
-def _workflow() -> SellerCopilotWorkflow:
-    ids = (
-        "crm_intelligence_specialist",
-        "activity_engagement_specialist",
-        "rep_performance_specialist",
-        "forecast_modeling_specialist",
-        "knowledge_base_rag",
-    )
-    return SellerCopilotWorkflow.model_construct(
+def _workflow() -> StuartWorkflow:
+    specialists = {
+        "crm_intelligence_specialist": SimpleNamespace(
+            name="crm_intelligence_specialist"
+        )
+    }
+    return StuartWorkflow.model_construct(
         name="central_orchestrator",
         planner_agent=SimpleNamespace(name="route_planner"),
-        specialist_agents={name: SimpleNamespace(name=name) for name in ids},
-        final_synthesis_agent=SimpleNamespace(name="synthesis"),
-        policy_answer_agent=SimpleNamespace(name="policy_answer"),
+        specialist_agents=specialists,
+        final_writer_agent=SimpleNamespace(name="synthesis"),
         sub_agents=[],
     )
 
 
-_POLICY_PAYLOAD = {
-    "status": "success",
-    "records": {
-        "PolicySection": [
-            {
-                "document_id": "DOC-DEAL-002",
-                "section": "Discount Authorization > ISC",
-                "content": "16% – 25% Discount: RVP Approval required.",
-            }
-        ]
-    },
-}
-
-
-def _faq_workflow(written: str, calls: list[str]) -> SellerCopilotWorkflow:
-    """Workflow whose retrieval is fixed and whose writer returns `written`."""
-    workflow = _workflow()
-
-    async def run_child(agent, ctx, request):  # noqa: ANN001
-        calls.append(agent.name)
-        assert agent.name != "synthesis"
-        return [], _POLICY_PAYLOAD, ""
-
-    async def stream_child(agent, ctx, request, outcome):  # noqa: ANN001
-        calls.append(agent.name)
-        outcome.update({"events": [], "payload": written, "error": ""})
-        return
-        yield  # pragma: no cover — keeps this an async generator
-
-    workflow._run_child = run_child  # type: ignore[method-assign]
-    workflow._stream_child = stream_child  # type: ignore[method-assign]
-    return workflow
-
-
-async def _collect(workflow: SellerCopilotWorkflow, query: str) -> str:
-    text: list[str] = []
+async def _collect(workflow: StuartWorkflow, query: str) -> str:
+    text = []
     async for event in workflow._run_async_impl(_ctx(query)):
-        if event.content:
+        if event.author == "central_orchestrator" and event.content:
             text.extend(
                 part.text
                 for part in event.content.parts or []
@@ -89,150 +51,72 @@ async def _collect(workflow: SellerCopilotWorkflow, query: str) -> str:
     return "\n".join(text)
 
 
-def test_greeting_skips_all_children() -> None:
+def test_planner_direct_reply_is_the_chat_response() -> None:
     workflow = _workflow()
-    calls: list[str] = []
-
-    async def fail(agent, ctx, request):  # noqa: ANN001
-        calls.append(agent.name)
-        raise AssertionError("children must not run")
-
-    workflow._run_child = fail  # type: ignore[method-assign]
-    assert asyncio.run(_collect(workflow, "hello"))
-    assert calls == []
-
-
-def test_specialist_payload_reaches_synthesis_once() -> None:
-    workflow = _workflow()
-    calls: list[str] = []
-    synthesis_request = ""
+    calls = []
 
     async def fake(agent, ctx, request):  # noqa: ANN001
-        nonlocal synthesis_request
         calls.append(agent.name)
-        if agent.name == "synthesis":
-            synthesis_request = request
-            return [], SynthesisOutput(
-                summary="East forecast risks are ready.",
-                insights=["0068b00001Deal002 failed its stage validation."],
-            ).model_dump(), ""
+        return [], {"agents": [], "direct_reply": "Morning — what are we reviewing?"}, ""
+
+    workflow._run_child = fake  # type: ignore[method-assign]
+    assert asyncio.run(_collect(workflow, "hi")) == "Morning — what are we reviewing?"
+    assert calls == ["route_planner"]
+
+
+def test_specialist_report_reaches_writer() -> None:
+    workflow = _workflow()
+    requests = {}
+
+    async def fake(agent, ctx, request):  # noqa: ANN001
+        requests[agent.name] = request
+        if agent.name == "route_planner":
+            return [], {
+                "agents": [{"agent_id": "crm_intelligence_specialist"}]
+            }, ""
+        if agent.name == "crm_intelligence_specialist":
+            return [], {
+                "answer": "There are 19 open opportunities.",
+                "facts": ["Global Logistics Corp is owned by Sarah Jenkins."],
+            }, ""
         return [], {
-            "status": "success",
-            "records": {
-                "StageValidationResult": [
-                    {"opp_id": "0068b00001Deal002", "failed_rules": ["Lead_SE__c"]}
-                ]
-            },
+            "summary": "You have 19 open opportunities.",
+            "insights": ["Global Logistics Corp is owned by Sarah Jenkins."],
+            "actions": [{"action": "Review the largest deal.", "due": "Friday"}],
         }, ""
 
     workflow._run_child = fake  # type: ignore[method-assign]
-    rendered = asyncio.run(
-        _collect(workflow, "Run the Sales Stage Validator for 0068b00001Deal002.")
-    )
-    assert calls == ["crm_intelligence_specialist", "synthesis"]
-    assert "StageValidationResult" in synthesis_request
-    assert "0068b00001Deal002" in synthesis_request
-    assert rendered.startswith("## Summary\n")
+    reply = asyncio.run(_collect(workflow, "What are my deals?"))
+    assert reply.startswith("## Summary\nYou have 19 open opportunities.")
+    assert "## Key Insights\n- Global Logistics Corp is owned by Sarah Jenkins." in reply
+    assert "1. Review the largest deal. (owner: you, when: Friday)" in reply
+    assert "## Artifacts\nNone." in reply
+    assert "What are my deals?" in requests["crm_intelligence_specialist"]
+    assert "There are 19 open opportunities." in requests["synthesis"]
 
 
-def test_cross_domain_manager_ask_runs_each_specialist_then_synthesis() -> None:
+def test_unknown_agent_id_never_runs() -> None:
     workflow = _workflow()
-    calls: list[str] = []
+    calls = []
 
     async def fake(agent, ctx, request):  # noqa: ANN001
         calls.append(agent.name)
-        if agent.name == "synthesis":
-            return [], SynthesisOutput(summary="Manager review is ready.").model_dump(), ""
-        return [], {"status": "success", "records": {"Grounded": [{"id": 1}]}}, ""
+        return [], {
+            "agents": [{"agent_id": "old_forecasting_agent"}],
+            "direct_reply": "What part of the forecast should we inspect?",
+        }, ""
 
     workflow._run_child = fake  # type: ignore[method-assign]
-    asyncio.run(
-        _collect(
-            workflow,
-            "Compare the verbal call to roll-up and model Q+1 and Q+2.",
-        )
-    )
-    assert set(calls[:-1]) == {
-        "crm_intelligence_specialist",
-        "activity_engagement_specialist",
-        "forecast_modeling_specialist",
-    }
-    assert calls[-1] == "synthesis"
-    assert calls.count("synthesis") == 1
+    reply = asyncio.run(_collect(workflow, "forecast"))
+    assert "forecast" in reply
+    assert calls == ["route_planner"]
 
 
-def test_faq_turn_answers_in_prose_without_synthesis() -> None:
-    calls: list[str] = []
-    written = (
-        "A 22% discount on ISC needs your RVP to sign off, since it lands in "
-        "the 16% – 25% band (DOC-DEAL-002 § Discount Authorization > ISC)."
-    )
-    workflow = _faq_workflow(written, calls)
-
-    rendered = asyncio.run(
-        _collect(workflow, "Who approves a 22% discount on ISC?")
-    )
-    assert calls == ["knowledge_base_rag", "policy_answer"]
-    assert rendered.strip() == (
-        "A 22% discount on ISC needs your RVP to sign off, since it lands in "
-        "the 16% – 25% band."
-    )
-    assert "DOC-DEAL-002" not in rendered
-    assert "Here is the approved guidance" not in rendered
-
-
-def test_faq_turn_reads_answer_from_a_non_streaming_writer() -> None:
-    """ADK emits no partial events when the model runs non-streaming."""
-    calls: list[str] = []
-    workflow = _workflow()
-    written = (
-        "A 22% discount on ISC needs your RVP to sign off, since it lands in "
-        "the 16% – 25% band."
-    )
-
-    async def run_child(agent, ctx, request):  # noqa: ANN001
-        calls.append(agent.name)
-        return [], _POLICY_PAYLOAD, ""
-
-    async def stream_child(agent, ctx, request, outcome):  # noqa: ANN001
-        calls.append(agent.name)
-        event = Event(
-            invocation_id="inv",
-            author=agent.name,
-            content=types.Content(
-                role="model", parts=[types.Part.from_text(text=written)]
-            ),
-        )
-        outcome.update({"events": [event], "payload": None, "error": ""})
-        yield event
-
-    workflow._run_child = run_child  # type: ignore[method-assign]
-    workflow._stream_child = stream_child  # type: ignore[method-assign]
-
-    rendered = asyncio.run(_collect(workflow, "Who approves a 22% discount on ISC?"))
-    assert calls == ["knowledge_base_rag", "policy_answer"]
-    assert written in rendered
-    assert "Here is the approved guidance" not in rendered
-
-
-def test_faq_answer_with_invented_threshold_falls_back_to_excerpts() -> None:
-    calls: list[str] = []
-    workflow = _faq_workflow(
-        "A 22% discount sits in the 20% to 29.9% tier, so it needs VP approval.",
-        calls,
-    )
-
-    rendered = asyncio.run(
-        _collect(workflow, "Who approves a 22% discount on ISC?")
-    )
-    assert calls.count("policy_answer") == 2  # one retry before falling back
-    assert "29.9" not in rendered
-    assert "16% – 25% Discount: RVP Approval required." in rendered
-
-
-def test_specialist_request_preserves_scope_and_grounding_instruction() -> None:
+def test_specialist_request_contains_no_tool_protocol() -> None:
     request = _workflow()._specialist_request(
-        "Show productivity gaps for east.", {}, {}
+        "crm_intelligence_specialist",
+        "List my deals.",
+        {},
     )
-    assert '"geo": "east"' in request
-    assert "record" in request.lower()
+    assert "manager_message" in request
+    assert "Tool scope" not in request

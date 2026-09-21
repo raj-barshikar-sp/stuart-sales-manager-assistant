@@ -7,7 +7,6 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 from starlette.testclient import TestClient
 
-from agents.constants import GREETING_REPLY
 from models.synthesis_output import (
     CopyReadyArtifact,
     RecommendedAction,
@@ -17,6 +16,8 @@ from models.synthesis_output import (
 from ui.app import create_app
 from ui.briefing import parse_reply
 from ui.progress import status_for_author
+
+CHAT_REPLY = "Sure — want me to start with the roll-up or the team?"
 
 
 def _event(author: str, text: str) -> Event:
@@ -39,43 +40,44 @@ class FakeRunner:
 
 
 def test_parse_reply_keeps_greetings_plain() -> None:
-    assert parse_reply(GREETING_REPLY) == {"kind": "plain", "text": GREETING_REPLY}
+    assert parse_reply(CHAT_REPLY) == {"kind": "plain", "text": CHAT_REPLY}
 
 
 def test_parse_reply_round_trips_rendered_briefing() -> None:
     markdown = render_synthesis_markdown(
         SynthesisOutput(
-            summary="7-Eleven is ready for the POS pilot briefing.",
-            insights=["Priya is the champion.", "Duplicate contact still open."],
+            summary="Meridian Bank is ready for the board review.",
+            insights=["Elena owns it.", "No Lead SE is assigned yet."],
             actions=[
                 RecommendedAction(
-                    action="Send the 50-store pilot plan.",
+                    action="Confirm the board slot.",
                     owner="you",
                     due="this week",
-                    paste="Priya — attaching the POS pilot plan.",
+                    paste="Elena — can you confirm the board date?",
                 )
             ],
             artifacts=[
                 CopyReadyArtifact(
                     title="Follow-up email",
                     kind="email",
-                    body="Hi Priya,\nSee the attached plan.",
+                    body="Hi Elena,\nConfirming the board review.",
                 )
             ],
         )
     )
     parsed = parse_reply(markdown)
     assert parsed["kind"] == "briefing"
-    assert parsed["summary"] == "7-Eleven is ready for the POS pilot briefing."
-    assert parsed["insights"][0] == "Priya is the champion."
-    assert parsed["actions"][0]["paste"].startswith("Priya")
+    assert parsed["summary"] == "Meridian Bank is ready for the board review."
+    assert parsed["insights"][0] == "Elena owns it."
+    assert parsed["actions"][0]["due"] == "this week"
+    assert parsed["actions"][0]["paste"].startswith("Elena")
     assert parsed["artifacts"][0]["title"] == "Follow-up email"
-    assert "attached plan" in parsed["artifacts"][0]["body"]
+    assert "board review" in parsed["artifacts"][0]["body"]
 
 
 def test_status_hides_orchestrator_and_unknown_authors() -> None:
     assert "crm" in status_for_author("crm_intelligence_specialist").lower()
-    assert "policy" in status_for_author("knowledge_base_rag").lower()
+    assert "guidance" in status_for_author("knowledge_base_rag").lower()
     assert status_for_author("central_orchestrator") is None
     assert status_for_author("secret_debug") is None
 
@@ -145,6 +147,8 @@ def test_landing_links_to_workspace() -> None:
     assert "function startCall" in app_js
     assert "data-theme-toggle" in app_js
     assert "Copy response" in app_js
+    assert "function formatDraft" in app_js
+    assert "function renderBriefing" in app_js
     assert "function briefingText" in app_js
     assert 'CHATS_KEY = "gru-chats"' in app_js
     assert "function persistChats" in app_js
@@ -153,6 +157,7 @@ def test_landing_links_to_workspace() -> None:
     assert "function showWorkspace" in app_js
     styles = client.get("/static/styles.css").text
     assert "--user-bubble: #fde8f3" in styles
+    assert ".draft-code" in styles
     assert ".artifact + .artifact" in styles
     assert "html[data-theme=\"dark\"] .brand-logo" not in styles
     gif = client.get("/static/bob_confused.gif")
@@ -180,7 +185,7 @@ def test_starters_and_session_endpoints() -> None:
         "Manager policy & knowledge",
     ]
     faq = workspace["tasks"][-1]
-    assert [item["id"] for item in faq["items"]] == ["manager_policy_faq"]
+    assert [item["id"] for item in faq["items"]] == ["knowledge_base"]
     assert faq["items"][0]["scopes"] == []
     assert any(
         item["id"] == "0068b00001Deal001"
@@ -212,9 +217,9 @@ def test_starters_and_session_endpoints() -> None:
 def test_chat_streams_status_then_briefing_without_specialist_json() -> None:
     markdown = render_synthesis_markdown(
         SynthesisOutput(
-            summary="NovaPay is high risk.",
-            insights=["No economic buyer."],
-            actions=[RecommendedAction(action="Call the CFO this week.")],
+            summary="NovaPay is high risk: there is no economic buyer.",
+            insights=["No CFO contact is attached to the opportunity."],
+            actions=[RecommendedAction(action="Call the CFO.", due="this week")],
         )
     )
     client = _client(
@@ -241,9 +246,11 @@ def test_chat_streams_status_then_briefing_without_specialist_json() -> None:
     assert "delta" in types_seen
     reply = next(event for event in events if event["type"] == "reply")
     assert reply["kind"] == "briefing"
-    assert reply["summary"] == "NovaPay is high risk."
+    assert reply["summary"] == "NovaPay is high risk: there is no economic buyer."
+    assert reply["insights"] == ["No CFO contact is attached to the opportunity."]
+    assert reply["actions"][0]["due"] == "this week"
     assert "forecast" in events[1]["label"].lower()
-    assert events[2]["label"] == "Writing your briefing…"
+    assert events[2]["label"] == "Putting that together…"
     assert "".join(event["text"] for event in events if event["type"] == "delta")
     assert "do-not-show" not in body
     assert events[-1]["type"] == "done"
@@ -267,7 +274,7 @@ def test_chat_task_uses_selected_opportunity() -> None:
 
 
 def test_chat_task_endpoint_streams_composed_prompt() -> None:
-    client = _client([_event("central_orchestrator", GREETING_REPLY)])
+    client = _client([_event("central_orchestrator", CHAT_REPLY)])
     created = client.post("/api/session").json()
     with client.stream(
         "POST",
@@ -296,7 +303,7 @@ def test_chat_rejects_empty_message() -> None:
 
 
 def test_chat_prefers_edited_message_over_task_id() -> None:
-    client = _client([_event("central_orchestrator", GREETING_REPLY)])
+    client = _client([_event("central_orchestrator", CHAT_REPLY)])
     created = client.post("/api/session").json()
     with client.stream(
         "POST",
@@ -316,7 +323,7 @@ def test_chat_prefers_edited_message_over_task_id() -> None:
 def test_chat_accepts_csv_attachment() -> None:
     import base64
 
-    client = _client([_event("central_orchestrator", GREETING_REPLY)])
+    client = _client([_event("central_orchestrator", CHAT_REPLY)])
     created = client.post("/api/session").json()
     payload = base64.b64encode(b"account,acv\nNovaPay,120000\n").decode("ascii")
     with client.stream(

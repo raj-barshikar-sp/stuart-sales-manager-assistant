@@ -1,1 +1,1 @@
-"""Seller Co-Pilot custom evaluation metrics."""
+"""Stuart's evaluation metrics."""

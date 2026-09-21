@@ -1,4 +1,4 @@
-"""Synthesis specialist package."""
+"""Stuart's final writer package."""
 
 from agents.synthesis.agent import synthesis_agent
 

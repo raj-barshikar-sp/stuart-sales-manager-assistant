@@ -18,7 +18,7 @@ EXPECTED_TOOLS = {
     "activity_engagement": ["activity_engagement_specialist", "synthesis"],
     "rep_performance": ["rep_performance_specialist", "synthesis"],
     "forecast_modeling": ["forecast_modeling_specialist", "synthesis"],
-    "knowledge_base": ["knowledge_base_rag"],
+    "knowledge_base": ["knowledge_base_rag", "synthesis"],
     "multi_specialist": [
         "crm_intelligence_specialist",
         "activity_engagement_specialist",

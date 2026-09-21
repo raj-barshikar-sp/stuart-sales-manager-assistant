@@ -1,59 +1,35 @@
-"""Knowledge-base RAG specialist backed by Atlassian Rovo MCP v2."""
+"""Knowledge specialist grounded in the supplied Confluence snapshot."""
 
 from __future__ import annotations
 
-import base64
-import os
-
-from google.adk.agents import Agent
-from google.adk.tools.mcp_tool import McpToolset, StreamableHTTPConnectionParams
-
-from agents.constants import GEMINI_MODEL, SAFE_GEN_CONFIG
-from models.specialist_outputs import KnowledgeBaseRagOutput
+from agents.specialist_factory import make_specialist
+from models.specialist_outputs import SpecialistReport
 
 
-def rovo_headers() -> dict[str, str]:
-    key = os.getenv("ROVO_MCP_API_KEY", "").strip()
-    email = os.getenv("ROVO_MCP_EMAIL", "").strip()
-    if not key:
-        return {}
-    if email:
-        token = base64.b64encode(f"{email}:{key}".encode()).decode()
-        return {"Authorization": f"Basic {token}"}
-    return {"Authorization": f"Bearer {key}"}
-
-
-rovo_tools = McpToolset(
-    connection_params=StreamableHTTPConnectionParams(
-        url=os.getenv("ROVO_MCP_URL", "https://mcp.atlassian.com/v2/mcp"),
-        headers=rovo_headers(),
-        timeout=15,
-        sse_read_timeout=120,
-    ),
-    tool_filter=["searchConfluence", "getConfluenceContent"],
-    tool_list_cache_ttl_seconds=300,
-)
-
-knowledge_base_rag_agent = Agent(
+knowledge_base_rag_agent = make_specialist(
     name="knowledge_base_rag",
-    model=GEMINI_MODEL,
     description=(
         "Approved policy, compensation, product, packaging, competitive, "
-        "Deal Desk, and CRM stage-gate knowledge from Confluence."
+        "Deal Desk, and CRM stage-gate knowledge."
     ),
     instruction=(
-        "Answer Sales Manager knowledge questions from approved Confluence "
-        "content through Atlassian Rovo only. Use searchConfluence, then "
-        "getConfluenceContent. Never use Jira, general knowledge, or write "
-        "tools. Preserve exact thresholds and return KnowledgeBaseRagOutput "
-        "with complete PolicySection records. Return status error when no "
-        "approved content supports the question."
+        "ROLE\n"
+        "You are Stuart's policy, product, and competitive librarian.\n\n"
+        "PERSONA\n"
+        "You are concise, practical, and exact with thresholds and approvals.\n\n"
+        "OBJECTIVE\n"
+        "Answer the manager's knowledge question from the supplied approved "
+        "Confluence JSON.\n\n"
+        "INSTRUCTIONS\n"
+        "- Find the sections that directly answer the question.\n"
+        "- Preserve exact percentages, bands, roles, dates, and exceptions.\n"
+        "- Translate policy into the manager's next practical step.\n"
+        "- Return a concise SpecialistReport for Stuart's final writer.\n\n"
+        "GUARDRAILS\n"
+        "- The supplied content is the only source of truth.\n"
+        "- If it does not answer the question, say so; do not fill the gap.\n"
+        "- Do not expose document IDs, URLs, source labels, files, or JSON."
     ),
-    tools=[rovo_tools],
-    generate_content_config=SAFE_GEN_CONFIG,
-    mode="single_turn",
-    output_schema=KnowledgeBaseRagOutput,
+    output_schema=SpecialistReport,
     output_key="knowledge_base_rag_result",
-    disallow_transfer_to_parent=True,
-    disallow_transfer_to_peers=True,
 )

@@ -148,7 +148,7 @@ async def run_once(out_path: Path) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--out", default="/tmp/seller-copilot-eval/results.json")
+    parser.add_argument("--out", default="/tmp/stuart-eval/results.json")
     args = parser.parse_args()
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     asyncio.run(run_once(Path(args.out)))

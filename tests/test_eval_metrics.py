@@ -15,6 +15,11 @@ from evals.metrics import (
     routing_pass,
     synthesis_format_pass,
 )
+from models.synthesis_output import (
+    RecommendedAction,
+    SynthesisOutput,
+    render_synthesis_markdown,
+)
 
 
 def test_routing_score_ignores_nested_tools_and_order_of_specialists() -> None:
@@ -39,7 +44,10 @@ def test_routing_score_ignores_nested_tools_and_order_of_specialists() -> None:
         ["route_planner", "crm_intelligence_specialist", "synthesis", "synthesis", "synthesis"],
         ["crm_intelligence_specialist", "synthesis"],
     )
-    assert routing_pass(["knowledge_base_rag"], ["knowledge_base_rag"])
+    assert routing_pass(
+        ["knowledge_base_rag", "synthesis"],
+        ["knowledge_base_rag", "synthesis"],
+    )
 
 
 def test_intermediate_authors_reads_child_agent_events() -> None:
@@ -81,24 +89,24 @@ def test_intermediate_authors_reads_invocation_events() -> None:
     ]
 
 
-def test_synthesis_format_gate_requires_no_preamble() -> None:
-    valid = """## Summary
-Ready.
-
-## Key Insights
-- One
-
-## Recommended Actions
-1. Act.
-
-## Artifacts
-None."""
-    assert synthesis_format_pass(valid, expect_synthesis=True)
+def test_synthesis_format_gate_requires_the_briefing_sections() -> None:
+    briefing = render_synthesis_markdown(
+        SynthesisOutput(
+            summary="You have 19 open deals. Global Logistics is the largest.",
+            insights=["Global Logistics Corp is $580,000 and closes 2026-09-29."],
+            actions=[RecommendedAction(action="Confirm board approval.")],
+        )
+    )
+    assert synthesis_format_pass(briefing, expect_synthesis=True)
     assert not synthesis_format_pass(
-        "Here you go.\n\n" + valid, expect_synthesis=True
+        "You have 19 open deals.",
+        expect_synthesis=True,
     )
     assert not synthesis_format_pass(
-        valid.replace("Ready.", "Awaiting specialist findings."),
+        briefing.replace(
+            "You have 19 open deals. Global Logistics is the largest.",
+            "Awaiting specialist findings.",
+        ),
         expect_synthesis=True,
     )
     assert synthesis_format_pass("Hello!", expect_synthesis=False)

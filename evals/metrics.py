@@ -105,7 +105,7 @@ def routing_pass(actual_authors: list[str], expected_names: list[str]) -> bool:
 
 
 def synthesis_format_pass(text: str, expect_synthesis: bool) -> bool:
-    """Validate the final renderer contract, including no preamble."""
+    """Validate the final briefing contract, including no preamble."""
     stripped = text.strip()
     if not stripped:
         return False
@@ -124,7 +124,7 @@ def synthesis_format_pass(text: str, expect_synthesis: bool) -> bool:
         "orchestrator",
         "synthesis",
         "single_turn",
-        "remember_working_context",
+        "route_planner",
     )
     return not any(term.lower() in lowered for term in leaks)
 

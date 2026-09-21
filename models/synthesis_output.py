@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import re
-from collections.abc import Iterable
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -25,9 +23,9 @@ class CopyReadyArtifact(BaseModel):
     """A block the manager can paste into email, CRM, or a doc."""
 
     title: str
-    kind: Literal["email", "merge_instruction", "talking_points", "ask", "work_order", "other"] = (
-        "other"
-    )
+    kind: Literal[
+        "email", "merge_instruction", "talking_points", "ask", "work_order", "other"
+    ] = "other"
     body: str = Field(description="Full paste-ready text. No placeholders like [NAME].")
 
 
@@ -49,55 +47,6 @@ class SynthesisOutput(BaseModel):
     )
 
 
-_PLACEHOLDER_RE = re.compile(r"\[[A-Z][A-Z0-9_ /-]{1,40}\]")
-_HOLLOW_RE = re.compile(
-    r"awaiting (?:specialist|findings)|ha(?:ve|s) not (?:yet )?received|"
-    r"underlying data .* not provided|ensure the orchestrator|"
-    r"structured findings .* missing|"
-    r"couldn't produce a reliable briefing|"
-    r"findings need to be regenerated|"
-    r"no specific numeric|"
-    r"missing specific (?:performance )?data|"
-    r"fresh (?:reporting )?pull|"
-    r"not returned in the current records|"
-    r"currently missing .* (?:coverage|kpi|metrics|performance)|"
-    r"records to populate",
-    re.IGNORECASE,
-)
-
-
-def validate_synthesis_output(
-    output: SynthesisOutput,
-    *,
-    forbidden_terms: Iterable[str] = (),
-) -> list[str]:
-    """Return contract violations that should trigger one synthesis retry."""
-    text = " ".join(
-        [
-            output.summary,
-            *output.insights,
-            *(action.action for action in output.actions),
-            *(action.paste for action in output.actions),
-            *(artifact.title for artifact in output.artifacts),
-            *(artifact.body for artifact in output.artifacts),
-        ]
-    )
-    errors: list[str] = []
-    if not output.summary.strip():
-        errors.append("summary is empty")
-    if _PLACEHOLDER_RE.search(text):
-        errors.append("contains bracket placeholders")
-    if _HOLLOW_RE.search(text):
-        errors.append("claims specialist findings are unavailable")
-    lowered = text.lower()
-    leaked = sorted(
-        term for term in forbidden_terms if term.lower() in lowered
-    )
-    if leaked:
-        errors.append(f"leaks internal source names: {', '.join(leaked)}")
-    return errors
-
-
 def _action_line(index: int, action: dict[str, object]) -> list[str]:
     body = str(action.get("action") or "").strip()
     if not body:
@@ -117,39 +66,6 @@ def _action_line(index: int, action: dict[str, object]) -> list[str]:
     if paste:
         lines.append(f"   Paste: {paste}")
     return lines
-
-
-def render_partial_markdown(fields: dict[str, object]) -> str:
-    """Render the sections of a still-streaming synthesis object.
-
-    The result is always a prefix of the final `render_synthesis_markdown`
-    output, so the UI can append text without ever rewriting what it showed.
-    A section is emitted only once every earlier section has arrived.
-    """
-    summary = fields.get("summary")
-    if not isinstance(summary, str) or not summary.strip():
-        return ""
-    blocks = ["## Summary\n" + summary.strip()]
-
-    raw_insights = fields.get("insights")
-    insights = (
-        [item.strip() for item in raw_insights if isinstance(item, str) and item.strip()]
-        if isinstance(raw_insights, list)
-        else []
-    )
-    if not insights:
-        return "\n\n".join(blocks)
-    blocks.append("## Key Insights\n" + "\n".join(f"- {item}" for item in insights))
-
-    raw_actions = fields.get("actions")
-    action_lines: list[str] = []
-    if isinstance(raw_actions, list):
-        for index, action in enumerate(raw_actions, start=1):
-            if isinstance(action, dict):
-                action_lines.extend(_action_line(index, action))
-    if action_lines:
-        blocks.append("## Recommended Actions\n" + "\n".join(action_lines))
-    return "\n\n".join(blocks)
 
 
 def render_synthesis_markdown(output: SynthesisOutput) -> str:

@@ -1,63 +1,41 @@
 # Stuart architecture
 
-The Sales Manager talks only to `central_orchestrator`. The workflow runs one
-deterministic CRM-hygiene preflight, routes directly to one or more specialists,
-and merges operational results through the hidden `synthesis` writer.
+`central_orchestrator` is a small workflow boundary around Gemini:
 
 ```text
-Sales Manager → central_orchestrator → deterministic CRM hygiene
-                                      ├─ crm_intelligence_specialist ─┐
-                                      ├─ activity_engagement_specialist
-                                      ├─ rep_performance_specialist   ├→ synthesis
-                                      ├─ forecast_modeling_specialist ┘
-                                      └─ knowledge_base_rag → policy_answer
+Sales Manager → route_planner ─┬─ crm_intelligence_specialist
+                               ├─ activity_engagement_specialist
+                               ├─ rep_performance_specialist
+                               ├─ forecast_modeling_specialist
+                               └─ knowledge_base_rag
+                                             ↓
+                                         synthesis
+                                             ↓
+                                      Stuart's response
 ```
 
-The five routable IDs are:
-
-- `crm_intelligence_specialist`: Salesforce CRM score, official Confluence
-  stage evidence, deal roll-up, coverage, and backup opportunities.
-- `activity_engagement_specialist`: Gong verbal calls and deal intelligence,
-  plus calendar and email engagement.
-- `rep_performance_specialist`: Workday tenure-tier minima and actuals, Gong
-  coaching, and manager oversight.
-- `forecast_modeling_specialist`: Salesforce quotas and opportunity
-  probabilities, conversion/pacing history, Gong calls, Q+1/Q+2 forecasts,
-  stagnation, and risk.
-- `knowledge_base_rag`: approved Confluence knowledge through Rovo MCP v2.
-
-`synthesis` and `policy_answer` are hidden workflow writers, not routing targets.
-Knowledge-only requests skip synthesis.
-
-## Deterministic hygiene
-
-The preflight runs once before specialist dispatch. It checks snapshot files,
-cross-source joins, requested scope, and stage-gate evidence. `CONF-DOC-005` is
-the canonical stage policy. A required source column that is absent is reported
-as `unverifiable`; it is never silently treated as a failed gate. Stagnation
-uses the official per-stage day threshold.
+The planner owns intent, follow-ups, clarifying questions, and casual chat.
+Code only validates its selected IDs, injects the right data, and runs selected
+specialists concurrently.
 
 ## Data boundary
 
-`agents/new_data_store.py` normalizes all five enriched v2 snapshots. It derives
-account display names from opportunity names, aliases `deal_id` to opportunity
-IDs, maps owners and Workday employees, exposes tenure tiers, quotas, conversion
-history and weekly verbal calls, and flattens `CONF-DOC-001..005` for local
-retrieval tests.
+`agents/data_context.py` maps each specialist to the raw snapshots it may read.
+The files are read on every turn, so changing a snapshot does not require
+clearing an application cache. No specialist has ADK tools.
 
-The production knowledge path exposes only Rovo's read-only
-`searchConfluence` and `getConfluenceContent` tools.
+This local JSON injection is the temporary data-access layer. Replace
+`source_context()` with production connectors when real systems are available;
+agent prompts and orchestration do not need to change.
 
-## Manager workspace
+## Conversation
 
-The UI preserves the five manager-facing groups: Forecasting, Forecast
-inspection, Rep participation, Future quarter pipeline overview, and Manager
-policy & knowledge. Individual forecast-inspection tasks are owned by CRM,
-activity, or forecast specialists according to their source data.
+The planner and writer are separate:
 
-## Verification
+- `route_planner` never states business facts.
+- Specialists interpret only their supplied records.
+- `synthesis` never sees raw source files; it receives grounded specialist
+  reports and writes Stuart's final response.
 
-```bash
-pytest -q
-adk eval agents evals/routing.evalset.json --config_file_path evals/test_config.json
-```
+This keeps casual turns natural while preventing the conversational agent from
+inventing CRM or policy facts.

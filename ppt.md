@@ -1,11 +1,11 @@
-# Bob — Sales Manager briefing
+# Stuart — Sales Manager assistant
 
 ## Audience and outcome
 
 - Built for Sales Managers who need one place to inspect the current forecast,
   coach reps, assess future pipeline, and answer sales-policy questions.
 - One orchestrator routes each request to grounded specialists.
-- One synthesis step returns Summary, Insights, Actions, and Artifacts.
+- One synthesis step returns a natural answer shaped to the question.
 - Facts come from linked JSON fixtures until live CRM and enablement connectors
   are introduced.
 
@@ -23,12 +23,12 @@
 
 ```mermaid
 flowchart LR
-  Manager[Sales Manager] --> Workspace[Bob workspace]
-  Workspace --> Router[Orchestrator]
+  Manager[Sales Manager] --> Workspace[Stuart workspace]
+  Workspace --> Router[Gemini planner]
   Router --> Specialists[Sales Manager specialists]
   Data[(Grounded JSON records)] --> Specialists
   Specialists --> Synthesis[Synthesis]
-  Synthesis --> Briefing[Manager briefing]
+  Synthesis --> Reply[Stuart reply]
 ```
 
 ## Technology
